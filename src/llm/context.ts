@@ -4,7 +4,7 @@ import { type RetrievalResult } from '../embed/retriever';
 import {
   estimateTokens as estimateTokensUtil,
   calculateTokenBudget,
-  trimToTokenBudget,
+  trimToTokenBudget as keepNewestUntilFits,
 } from '../utils/tokens';
 import { traceLogger } from '../utils/trace-logger';
 
@@ -60,10 +60,55 @@ export function assembleContext(
   recentMessages: Message[],
   config: ContextConfig
 ): ChatMessage[] {
-  // TODO(student): build the prompt context in layer order (system -> rolling summary -> retrieved snippets -> recent buffer) within the per-section token budget, de-duplicating by timestamp and trimming gracefully when space runs out. See the lecture materials.
-  void recentMessages; void config;
-  void SYSTEM_PROMPT; void trimToTokenBudget; void traceLogger; void getTimeAgo;
-  throw new Error('TODO(student): implement assembleContext');
+  const budget = calculateTokenBudget(config.maxInputTokens);
+  const context: ChatMessage[] = [];
+
+  /* ---- Layers 1-3: build ONE system message ----------------------- */
+  let systemText = SYSTEM_PROMPT;
+  let kept: RetrievalResult[] = []
+
+  if (config.summary) {
+    let summaryText = config.summary.text;
+
+    if (estimateTokens(summaryText) > budget.summary) {
+      const maxChars = budget.summary * 4;
+      summaryText = "..." + summaryText.slice(-maxChars);
+    }
+    systemText += `\n\nSummary:\n${summaryText}`;
+  }
+
+  if (config.retrievedSnippets && config.retrievedSnippets.length > 0) {
+    const sorted = [...config.retrievedSnippets].sort((a, b) => b.score - a.score);
+    kept = dropWeakestUntilFits(sorted, budget.retrieval);
+    if (kept.length > 0) {
+      systemText += `\n\n${formatSnippets(kept)}`;
+    }
+  }
+
+  context.push({ role: "system", content: systemText });
+
+  /* ---- Layer 4: recent buffer as REAL dialogue turns --------------*/
+  let buffer = dropTurnsAlreadyInSummary(recentMessages, config.summary);
+  buffer = keepNewestUntilFits(buffer, budget.buffer);
+
+  for (const msg of buffer) {
+    context.push({ role: msg.role, content: msg.text });
+  }
+  /* ---- Layer 5: the new user message is appended by the caller ---- */
+  traceLogger.info('Context', 'Context assembled', {
+    budget,
+    summaryIncluded: !!config.summary,
+    summaryTruncated: config.summary
+      ? estimateTokens(config.summary.text) > budget.summary
+      : false,
+    snippetsRetrieved: config.retrievedSnippets?.length ?? 0,
+    snippetsKept: kept.length,
+    bufferMessagesAvailable: recentMessages.length,
+    bufferMessagesKept: buffer.length,
+    totalContextMessages: context.length,
+  });
+
+  return context;
 }
 
 /**
@@ -81,4 +126,35 @@ function getTimeAgo(timestamp: number): string {
   if (hours > 0) return `${hours}h ago`;
   if (minutes > 0) return `${minutes}m ago`;
   return 'just now';
+}
+
+function formatSnippets(snippets: RetrievalResult[]): string {
+  const lines = snippets.map((snippet, index) =>
+    `[${index}] (${getTimeAgo(snippet.message.timestamp)}, relevance: ${snippet.score.toFixed(2)}): snippet: ${snippet.message.text}`
+  );
+
+  return `Relevant context from past conversation:\n${lines.join("\n")}`;
+}
+
+function dropWeakestUntilFits(snippets: RetrievalResult[], retrievalBudget: number): RetrievalResult[] {
+  const kept: RetrievalResult[] = [];
+  let used = 0;
+
+  for (let i = 0; i < snippets.length; i++) {
+    const t = estimateTokens(snippets[i].message.text);
+    if (used + t > retrievalBudget) {
+      break;
+    }
+    kept.push(snippets[i]);
+    used += t;
+  }
+
+  return kept;
+}
+
+function dropTurnsAlreadyInSummary(recentMessages: Message[], summary?: Summary | null): Message[] {
+  if (!summary) {
+    return recentMessages;
+  }
+  return recentMessages.filter((message) => message.timestamp > summary.upToTs)
 }
