@@ -218,9 +218,10 @@ export async function removeEmbedding(msgId: number, threadId = 'default-thread'
  * Returns value between 0 and 1, higher for more recent messages
  */
 function calculateRecencyBoost(timestamp: number): number {
-  // TODO(student): return a recency weight in [0,1] derived from a timestamp (logarithmic decay). See the lecture materials.
-  void timestamp;
-  throw new Error('TODO(student): implement calculateRecencyBoost');
+  const ageMs = Date.now() - timestamp;
+  const ageDays = ageMs / (1000 * 60 * 60 * 24);
+
+  return 1 / (1 + Math.log(1 + ageDays));
 }
 
 /**
@@ -229,21 +230,28 @@ function calculateRecencyBoost(timestamp: number): number {
 function calculateCombinedScore(
   cosineSimilarity: number,
   recencyBoost: number,
-  alpha: number,
-  beta: number
+  alpha: number = 0.7,
+  beta: number = 0.3
 ): number {
-  // TODO(student): return alpha*cosineSimilarity + beta*recencyBoost. See the lecture materials.
-  void cosineSimilarity; void recencyBoost; void alpha; void beta;
-  throw new Error('TODO(student): implement calculateCombinedScore');
+  const combinedScore = alpha * cosineSimilarity + beta * recencyBoost;
+  return combinedScore;
 }
 
 /**
  * Calculate cosine similarity between two vectors
  */
 function cosineSimilarity(a: Float32Array, b: Float32Array): number {
-  // TODO(student): return cosine similarity between two vectors (dot product of normalized vectors). See the lecture materials.
-  void a; void b;
-  throw new Error('TODO(student): implement cosineSimilarity');
+  let dotProduct = 0;
+  let normA = 0;
+  let normB = 0;
+
+  for (let i = 0; i < a.length; i++) {
+    dotProduct = dotProduct + a[i] * b[i];
+    normA = normA + a[i] * a[i];
+    normB = normB + b[i] * b[i];
+  }
+
+  return dotProduct / (Math.sqrt(normA) * Math.sqrt(normB));
 }
 
 /**
