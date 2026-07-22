@@ -46,6 +46,7 @@ export default function Chat() {
     setMemoryStats,
   } = useAppState();
   const messagesEndRef = useRef<HTMLDivElement>(null);
+  const isSendingRef = useRef<boolean>(false);
   const llmService = useRef(getLLMService());
 
   // Set up memory stats callback
@@ -152,6 +153,7 @@ export default function Chat() {
 
   const handleSend = async () => {
     if (!input.trim() || modelStatus !== 'ready' || isGenerating) return;
+    isSendingRef.current = true;
 
     // Validate input length using current maxInputTokens from state
     const validationError = validateUserInput(input, maxInputTokens);
@@ -251,6 +253,8 @@ export default function Chat() {
       traceLogger.error('Chat', 'Failed to generate response', error);
       setIsGenerating(false);
       setCurrentStreamedMessage('');
+    } finally {
+      isSendingRef.current = false;
     }
   };
 

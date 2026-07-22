@@ -98,6 +98,10 @@ export class LLMService {
       throw new Error('Model not initialized. Call initModel() first.');
     }
 
+    if (this.abortController) {
+      throw new Error('A generation is already in progress.');
+    }
+
     try {
       // Create abort controller for this generation
       this.abortController = new AbortController();
