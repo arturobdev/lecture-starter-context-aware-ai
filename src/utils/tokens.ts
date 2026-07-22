@@ -2,7 +2,7 @@ export const CHARS_PER_TOKEN = 4;
 export const SUMMARY_TRIGGER_RATIO = 0.9;
 
 export const BUDGET_RATIOS = {
-  systemPrompt: 0.5,
+  systemPrompt: 0.05,
   summary: 0.15,
   retrieval: 0.20,
   userMessageReserve: 0.10
