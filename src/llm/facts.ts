@@ -92,8 +92,15 @@ export async function saveFacts(facts: Fact[]): Promise<void> {
   }
 
   try {
-    // Batch insert all facts
-    await db.facts.bulkAdd(facts);
+    for (const fact of facts) {
+      const existing = await db.facts.where('threadId').equals(fact.threadId).and(f => f.key === fact.key).first();
+
+      if (existing?.id) {
+        await db.facts.update(existing.id, { value: fact.value, sourceMsgId: fact.sourceMsgId });
+      } else {
+        await db.facts.add(fact);
+      }
+    }
     traceLogger.info('Facts', 'Facts saved to database', { count: facts.length });
   } catch (error) {
     traceLogger.error('Facts', 'Failed to save facts', error);
