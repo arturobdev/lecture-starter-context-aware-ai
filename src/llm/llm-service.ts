@@ -38,6 +38,7 @@ export class LLMService {
   private abortController: AbortController | null = null;
   private tokenLimits: TokenLimits | null = null;
   private gpuCapabilities: GPUCapabilities | null = null;
+  private generationQueue: Promise<void> = Promise.resolve();
 
   /**
    * Initialize the LLM engine with the specified model
@@ -98,9 +99,10 @@ export class LLMService {
       throw new Error('Model not initialized. Call initModel() first.');
     }
 
-    if (this.abortController) {
-      throw new Error('A generation is already in progress.');
-    }
+    const previous = this.generationQueue;
+    let releaseNext!: () => void;
+    this.generationQueue = new Promise((resolve) => { releaseNext = resolve });
+    await previous;
 
     try {
       // Create abort controller for this generation
@@ -153,6 +155,7 @@ export class LLMService {
       );
     } finally {
       this.abortController = null;
+      releaseNext();
     }
   }
 
