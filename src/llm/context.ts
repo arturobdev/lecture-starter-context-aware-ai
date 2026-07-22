@@ -1,4 +1,4 @@
-import { type Message, type Summary } from '../db/db';
+import { type Fact, type Message, type Summary } from '../db/db';
 import { SYSTEM_PROMPT } from './prompts';
 import { type RetrievalResult } from '../embed/retriever';
 import {
@@ -11,6 +11,7 @@ import {
   MS_PER_DAY,
 } from '../utils/tokens';
 import { traceLogger } from '../utils/trace-logger';
+import { formatFacts } from './facts';
 
 export interface ChatMessage {
   role: 'system' | 'user' | 'assistant';
@@ -47,6 +48,7 @@ export interface ContextConfig {
   maxInputTokens: number;
   summary?: Summary | null;
   retrievedSnippets?: RetrievalResult[];
+  facts?: Fact[]
 }
 
 /**
@@ -69,7 +71,8 @@ export function assembleContext(
 
   /* ---- Layers 1-3: build ONE system message ----------------------- */
   let systemText = SYSTEM_PROMPT;
-  let kept: RetrievalResult[] = []
+  let kept: RetrievalResult[] = [];
+  let facts: Fact[] = [];
 
   if (config.summary) {
     let summaryText = config.summary.text;
@@ -79,6 +82,14 @@ export function assembleContext(
       summaryText = "..." + summaryText.slice(-maxChars);
     }
     systemText += `\n\nSummary:\n${summaryText}`;
+  }
+
+  if (config.facts && config.facts.length > 0) {
+    const sorted = [...config.facts].sort((a, b) => b.sourceMsgId - a.sourceMsgId);
+    facts = dropOldestFactsUntilFits(sorted, budget.facts);
+    if (facts.length > 0) {
+      systemText += `\n\n${formatFacts(facts)}`;
+    }
   }
 
   if (config.retrievedSnippets && config.retrievedSnippets.length > 0) {
@@ -105,6 +116,8 @@ export function assembleContext(
     summaryTruncated: config.summary
       ? estimateTokens(config.summary.text) > budget.summary
       : false,
+    factsAvailable: config.facts?.length ?? 0,
+    factsKept: facts.length,
     snippetsRetrieved: config.retrievedSnippets?.length ?? 0,
     snippetsKept: kept.length,
     bufferMessagesAvailable: recentMessages.length,
@@ -161,4 +174,20 @@ function dropTurnsAlreadyInSummary(recentMessages: Message[], summary?: Summary 
     return recentMessages;
   }
   return recentMessages.filter((message) => message.timestamp > summary.upToTs)
+}
+
+function dropOldestFactsUntilFits(facts: Fact[], retrievalBudget: number): Fact[] {
+  const kept: Fact[] = [];
+  let used = 0;
+
+  for (let i = 0; i < facts.length; i++) {
+    const t = estimateTokens(`• ${facts[i].key}: ${facts[i].value}`);
+    if (used + t > retrievalBudget) {
+      break;
+    }
+    kept.push(facts[i]);
+    used += t;
+  }
+
+  return kept;
 }

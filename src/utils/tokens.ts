@@ -5,6 +5,7 @@ export const BUDGET_RATIOS = {
   systemPrompt: 0.05,
   summary: 0.15,
   retrieval: 0.20,
+  facts: 0.05,
   userMessageReserve: 0.10
 } as const;
 
@@ -43,6 +44,7 @@ export interface TokenBudget {
   retrieval: number;
   buffer: number;
   userMessageReserve: number;
+  facts: number,
   total: number;
 }
 
@@ -52,15 +54,17 @@ export function calculateTokenBudget(maxInputTokens: number): TokenBudget {
   const systemPrompt = Math.floor(total * BUDGET_RATIOS.systemPrompt);
   const summary = Math.floor(total * BUDGET_RATIOS.summary);
   const retrieval = Math.floor(total * BUDGET_RATIOS.retrieval);
+  const facts = Math.floor(total * BUDGET_RATIOS.facts);
   const userMessageReserve = Math.floor(total * BUDGET_RATIOS.userMessageReserve);
 
-  const buffer = total - systemPrompt - summary - retrieval - userMessageReserve;
+  const buffer = total - systemPrompt - summary - retrieval - userMessageReserve - facts;
 
   return {
     systemPrompt,
     summary,
     retrieval,
     buffer,
+    facts,
     userMessageReserve,
     total
   };
