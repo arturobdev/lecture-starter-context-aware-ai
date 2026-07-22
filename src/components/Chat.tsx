@@ -152,18 +152,8 @@ export default function Chat() {
   }, [messages, currentStreamedMessage]);
 
   const handleSend = async () => {
-    if (!input.trim() || modelStatus !== 'ready' || isGenerating) return;
+    if (!input.trim() || modelStatus !== 'ready' || isGenerating || isSendingRef.current) return;
     isSendingRef.current = true;
-
-    // Validate input length using current maxInputTokens from state
-    const validationError = validateUserInput(input, maxInputTokens);
-    if (validationError) {
-      setInputError(validationError);
-      return;
-    }
-
-    // Clear any previous error
-    setInputError(null);
 
     const userMessage: Message = {
       threadId: currentThreadId,
@@ -173,6 +163,16 @@ export default function Chat() {
     };
 
     try {
+      // Validate input length using current maxInputTokens from state
+      const validationError = validateUserInput(input, maxInputTokens);
+      if (validationError) {
+        setInputError(validationError);
+        return;
+      }
+
+      // Clear any previous error
+      setInputError(null);
+
       // Save user message to Dexie
       const userMsgId = await db.messages.add(userMessage);
       const savedUserMsg = await db.messages.get(userMsgId);
