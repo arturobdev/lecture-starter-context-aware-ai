@@ -8,6 +8,10 @@ export const BUDGET_RATIOS = {
   userMessageReserve: 0.10
 } as const;
 
+export const MS_PER_MINUTE = 60_000;
+export const MS_PER_HOUR = MS_PER_MINUTE * 60;
+export const MS_PER_DAY = MS_PER_HOUR * 24;
+
 /**
  * Token Budget Utilities
  *

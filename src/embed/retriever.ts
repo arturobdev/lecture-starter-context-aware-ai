@@ -13,6 +13,7 @@ import { db, type Message } from '../db/db';
 import { ANNIndex, type SearchResult } from './ann';
 import { embedService } from './embed-service';
 import { traceLogger } from '../utils/trace-logger';
+import { MS_PER_DAY } from '../utils/tokens';
 
 export interface RetrievalResult {
   message: Message;
@@ -219,7 +220,7 @@ export async function removeEmbedding(msgId: number, threadId = 'default-thread'
  */
 function calculateRecencyBoost(timestamp: number): number {
   const ageMs = Date.now() - timestamp;
-  const ageDays = ageMs / (1000 * 60 * 60 * 24);
+  const ageDays = ageMs / MS_PER_DAY;
 
   return 1 / (1 + Math.log(1 + ageDays));
 }

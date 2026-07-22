@@ -6,6 +6,9 @@ import {
   calculateTokenBudget,
   trimToTokenBudget as keepNewestUntilFits,
   CHARS_PER_TOKEN,
+  MS_PER_MINUTE,
+  MS_PER_HOUR,
+  MS_PER_DAY,
 } from '../utils/tokens';
 import { traceLogger } from '../utils/trace-logger';
 
@@ -119,9 +122,9 @@ function getTimeAgo(timestamp: number): string {
   const now = Date.now();
   const diff = now - timestamp;
 
-  const minutes = Math.floor(diff / (1000 * 60));
-  const hours = Math.floor(diff / (1000 * 60 * 60));
-  const days = Math.floor(diff / (1000 * 60 * 60 * 24));
+  const minutes = Math.floor(diff / MS_PER_MINUTE);
+  const hours = Math.floor(diff / MS_PER_HOUR);
+  const days = Math.floor(diff / MS_PER_DAY);
 
   if (days > 0) return `${days}d ago`;
   if (hours > 0) return `${hours}h ago`;
