@@ -1,3 +1,13 @@
+export const CHARS_PER_TOKEN = 4;
+export const SUMMARY_TRIGGER_RATIO = 0.9;
+
+export const BUDGET_RATIOS = {
+  systemPrompt: 0.5,
+  summary: 0.15,
+  retrieval: 0.20,
+  userMessageReserve: 0.10
+} as const;
+
 /**
  * Token Budget Utilities
  *
@@ -10,7 +20,7 @@
  * Heuristic: ~4 characters per token for English text
  */
 export function estimateTokens(text: string): number {
-  return Math.ceil(text.length / 4);
+  return Math.ceil(text.length / CHARS_PER_TOKEN);
 }
 
 /**
@@ -35,10 +45,10 @@ export interface TokenBudget {
 export function calculateTokenBudget(maxInputTokens: number): TokenBudget {
   const total = maxInputTokens;
 
-  const systemPrompt = Math.floor(total * 0.05);
-  const summary = Math.floor(total * 0.15);
-  const retrieval = Math.floor(total * 0.20);
-  const userMessageReserve = Math.floor(total * 0.10);
+  const systemPrompt = Math.floor(total * BUDGET_RATIOS.systemPrompt);
+  const summary = Math.floor(total * BUDGET_RATIOS.summary);
+  const retrieval = Math.floor(total * BUDGET_RATIOS.retrieval);
+  const userMessageReserve = Math.floor(total * BUDGET_RATIOS.userMessageReserve);
 
   const buffer = total - systemPrompt - summary - retrieval - userMessageReserve;
 
@@ -59,7 +69,7 @@ export function needsSummary(
   bufferTokens: number,
   budgetAllowance: number
 ): boolean {
-  const threshold = Math.floor(budgetAllowance * 0.9);
+  const threshold = Math.floor(budgetAllowance * SUMMARY_TRIGGER_RATIO);
   return bufferTokens > threshold;
 }
 

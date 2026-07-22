@@ -5,6 +5,7 @@ import {
   estimateTokens as estimateTokensUtil,
   calculateTokenBudget,
   trimToTokenBudget as keepNewestUntilFits,
+  CHARS_PER_TOKEN,
 } from '../utils/tokens';
 import { traceLogger } from '../utils/trace-logger';
 
@@ -71,7 +72,7 @@ export function assembleContext(
     let summaryText = config.summary.text;
 
     if (estimateTokens(summaryText) > budget.summary) {
-      const maxChars = budget.summary * 4;
+      const maxChars = budget.summary * CHARS_PER_TOKEN;
       summaryText = "..." + summaryText.slice(-maxChars);
     }
     systemText += `\n\nSummary:\n${summaryText}`;
